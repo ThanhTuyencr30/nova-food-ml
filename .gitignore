@@ -15,3 +15,5 @@ reports/figures/*
 !reports/figures/.gitkeep
 *.joblib
 *.pkl
+*.csv
+*.csv.gz

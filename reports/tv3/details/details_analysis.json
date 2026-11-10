@@ -1,0 +1,331 @@
+{
+  "input_stats": [
+    {
+      "dataset": "train",
+      "n": 90044,
+      "median_chars": 206.0,
+      "median_tokens": 26.0,
+      "p90_tokens": 76.0,
+      "mean_oov_fraction_per_product": 0.02821981027478463,
+      "token_weighted_oov_fraction": 0.03507960925481989,
+      "zero_vectors": 134,
+      "vi_char_rows": 309,
+      "vi_char_fraction": 0.0034316556350228776
+    },
+    {
+      "dataset": "test",
+      "n": 22512,
+      "median_chars": 207.0,
+      "median_tokens": 26.0,
+      "p90_tokens": 75.0,
+      "mean_oov_fraction_per_product": 0.033346457467166975,
+      "token_weighted_oov_fraction": 0.03941442572249111,
+      "zero_vectors": 49,
+      "vi_char_rows": 69,
+      "vi_char_fraction": 0.0030650319829424308
+    },
+    {
+      "dataset": "vietnam",
+      "n": 171,
+      "median_chars": 210.0,
+      "median_tokens": 29.0,
+      "p90_tokens": 79.0,
+      "mean_oov_fraction_per_product": 0.09455159589708771,
+      "token_weighted_oov_fraction": 0.1362695832101685,
+      "zero_vectors": 0,
+      "vi_char_rows": 34,
+      "vi_char_fraction": 0.19883040935672514
+    },
+    {
+      "dataset": "test_correct",
+      "n": 21110,
+      "median_chars": 213.0,
+      "median_tokens": 27.0,
+      "mean_oov_fraction_per_product": 0.031848734002030074,
+      "vi_char_rows": 62
+    },
+    {
+      "dataset": "test_wrong",
+      "n": 1402,
+      "median_chars": 132.0,
+      "median_tokens": 17.0,
+      "mean_oov_fraction_per_product": 0.05589777155350071,
+      "vi_char_rows": 7
+    },
+    {
+      "dataset": "vietnam_correct",
+      "n": 156,
+      "median_chars": 218.5,
+      "median_tokens": 32.5,
+      "mean_oov_fraction_per_product": 0.09495399943435112,
+      "vi_char_rows": 32
+    },
+    {
+      "dataset": "vietnam_wrong",
+      "n": 15,
+      "median_chars": 96.0,
+      "median_tokens": 12.0,
+      "mean_oov_fraction_per_product": 0.09036659910954835,
+      "vi_char_rows": 2
+    }
+  ],
+  "nutrition": [
+    {
+      "dataset": "train",
+      "column": "energy-kcal_100g",
+      "column_exists": false,
+      "missing_n": 90044,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "train",
+      "column": "fat_100g",
+      "column_exists": false,
+      "missing_n": 90044,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "train",
+      "column": "saturated-fat_100g",
+      "column_exists": false,
+      "missing_n": 90044,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "train",
+      "column": "sugars_100g",
+      "column_exists": true,
+      "missing_n": 9435,
+      "missing_fraction": 0.10478210652569855,
+      "median_available": 4.6
+    },
+    {
+      "dataset": "train",
+      "column": "salt_100g",
+      "column_exists": true,
+      "missing_n": 9124,
+      "missing_fraction": 0.10132823952734218,
+      "median_available": 0.47
+    },
+    {
+      "dataset": "train",
+      "column": "proteins_100g",
+      "column_exists": false,
+      "missing_n": 90044,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "train",
+      "column": "fiber_100g",
+      "column_exists": false,
+      "missing_n": 90044,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "test",
+      "column": "energy-kcal_100g",
+      "column_exists": false,
+      "missing_n": 22512,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "test",
+      "column": "fat_100g",
+      "column_exists": false,
+      "missing_n": 22512,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "test",
+      "column": "saturated-fat_100g",
+      "column_exists": false,
+      "missing_n": 22512,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "test",
+      "column": "sugars_100g",
+      "column_exists": true,
+      "missing_n": 2370,
+      "missing_fraction": 0.1052771855010661,
+      "median_available": 4.7
+    },
+    {
+      "dataset": "test",
+      "column": "salt_100g",
+      "column_exists": true,
+      "missing_n": 2284,
+      "missing_fraction": 0.10145700071073205,
+      "median_available": 0.46
+    },
+    {
+      "dataset": "test",
+      "column": "proteins_100g",
+      "column_exists": false,
+      "missing_n": 22512,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "test",
+      "column": "fiber_100g",
+      "column_exists": false,
+      "missing_n": 22512,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "vietnam",
+      "column": "energy-kcal_100g",
+      "column_exists": false,
+      "missing_n": 171,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "vietnam",
+      "column": "fat_100g",
+      "column_exists": false,
+      "missing_n": 171,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "vietnam",
+      "column": "saturated-fat_100g",
+      "column_exists": false,
+      "missing_n": 171,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "vietnam",
+      "column": "sugars_100g",
+      "column_exists": true,
+      "missing_n": 50,
+      "missing_fraction": 0.29239766081871343,
+      "median_available": 8.57142857142857
+    },
+    {
+      "dataset": "vietnam",
+      "column": "salt_100g",
+      "column_exists": true,
+      "missing_n": 47,
+      "missing_fraction": 0.27485380116959063,
+      "median_available": 0.15
+    },
+    {
+      "dataset": "vietnam",
+      "column": "proteins_100g",
+      "column_exists": false,
+      "missing_n": 171,
+      "missing_fraction": 1.0,
+      "median_available": null
+    },
+    {
+      "dataset": "vietnam",
+      "column": "fiber_100g",
+      "column_exists": false,
+      "missing_n": 171,
+      "missing_fraction": 1.0,
+      "median_available": null
+    }
+  ],
+  "class_distribution": [
+    {
+      "dataset": "train",
+      "nova": 1,
+      "n": 10767,
+      "fraction": 0.11957487450579717
+    },
+    {
+      "dataset": "train",
+      "nova": 2,
+      "n": 1588,
+      "fraction": 0.01763582248678424
+    },
+    {
+      "dataset": "train",
+      "nova": 3,
+      "n": 17412,
+      "fraction": 0.19337212918128915
+    },
+    {
+      "dataset": "train",
+      "nova": 4,
+      "n": 60277,
+      "fraction": 0.6694171738261294
+    },
+    {
+      "dataset": "test",
+      "nova": 1,
+      "n": 2692,
+      "fraction": 0.11958066808813078
+    },
+    {
+      "dataset": "test",
+      "nova": 2,
+      "n": 397,
+      "fraction": 0.017635039090262972
+    },
+    {
+      "dataset": "test",
+      "nova": 3,
+      "n": 4353,
+      "fraction": 0.193363539445629
+    },
+    {
+      "dataset": "test",
+      "nova": 4,
+      "n": 15070,
+      "fraction": 0.6694207533759773
+    },
+    {
+      "dataset": "vietnam",
+      "nova": 1,
+      "n": 22,
+      "fraction": 0.1286549707602339
+    },
+    {
+      "dataset": "vietnam",
+      "nova": 2,
+      "n": 4,
+      "fraction": 0.023391812865497075
+    },
+    {
+      "dataset": "vietnam",
+      "nova": 3,
+      "n": 21,
+      "fraction": 0.12280701754385964
+    },
+    {
+      "dataset": "vietnam",
+      "nova": 4,
+      "n": 124,
+      "fraction": 0.7251461988304093
+    }
+  ],
+  "load_warnings": [
+    "Trying to unpickle estimator TfidfVectorizer from version 1.9.1 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:\nhttps://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations",
+    "Trying to unpickle estimator TfidfTransformer from version 1.9.1 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:\nhttps://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations",
+    "Trying to unpickle estimator TfidfVectorizer from version 1.9.1 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:\nhttps://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations",
+    "Trying to unpickle estimator ColumnTransformer from version 1.9.1 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:\nhttps://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations",
+    "Trying to unpickle estimator LinearSVC from version 1.9.1 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:\nhttps://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations",
+    "Trying to unpickle estimator Pipeline from version 1.9.1 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:\nhttps://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations"
+  ],
+  "prediction_mismatches": {
+    "test": 0,
+    "vietnam": 0
+  },
+  "review_n": 51,
+  "review_test_n": 36,
+  "review_vietnam_n": 15
+}

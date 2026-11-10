@@ -1,0 +1,37 @@
+[
+  {
+    "file": "data/processed/off_nova.csv",
+    "bytes": 36972084,
+    "sha256": "77800d7b7abe37923859f45e1040229b40170885d18a9706a440adf1fded1b5c"
+  },
+  {
+    "file": "data/processed/vietnam.csv",
+    "bytes": 58130,
+    "sha256": "be9391c9e885322df12cdad121a99d29518c52a015dd91a54a6c0e44734d13e1"
+  },
+  {
+    "file": "models/model_meta.json",
+    "bytes": 451,
+    "sha256": "fafa27d41b54144a5acdcfe043ca31920f7ee5a2cf596ed4b426bf6e31562ca5"
+  },
+  {
+    "file": "models/nova_pipeline.joblib",
+    "bytes": 7463414,
+    "sha256": "a3e4623898e6b7989320d5d0b5b6d0234930113a77c4a5c76237469bb0b43d43"
+  },
+  {
+    "file": "reports/model_comparison.csv",
+    "bytes": 324,
+    "sha256": "03100e299977e6cd564b236a74a2a0a1334487327660afccc9722601190b4298"
+  },
+  {
+    "file": "reports/test_predictions.csv",
+    "bytes": 7090312,
+    "sha256": "031bcbc3eef91454ee75cb5167d11481c53eca9570d8bfe111f5ab9ee1b9861a"
+  },
+  {
+    "file": "reports/vietnam_predictions.csv",
+    "bytes": 55936,
+    "sha256": "5599b379cc48a03ca48a3cf0aae960fc5c9937b04c6a5bad8ed401540c2bf217"
+  }
+]

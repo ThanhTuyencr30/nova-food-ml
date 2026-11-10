@@ -1,0 +1,4 @@
+Mở Bao_cao_danh_gia_NOVA.html bằng trình duyệt để đọc báo cáo.
+CSV dùng UTF-8 BOM, có thể mở bằng Excel.
+Chạy lại: python evaluate_nova.py --project "đường_dẫn_project" --output "thư_mục_kết_quả_mới"
+Không ghi đè bảy file đầu vào. Các tập con không trùng là kiểm tra độ nhạy, không phải test độc lập sau train lại.

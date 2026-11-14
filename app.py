@@ -4,6 +4,7 @@ import time
 
 import pandas as pd
 import streamlit as st
+import altair as alt
 
 from src.nova.inference.predict import (
     predict_ingredients,
@@ -723,29 +724,63 @@ with tab_model:
     chart_col, text_col = st.columns([3, 2], gap="large")
 
     with chart_col:
-        st.bar_chart(
-            pd.DataFrame(
-                {"Điểm (%)": [95.76, 87.96, 95.79]},
-                index=["Accuracy", "Macro-F1", "Weighted-F1"]
-            ),
-            horizontal=True,
-        )
+            chart_data = pd.DataFrame({
+                "Chỉ số": ["Accuracy", "Macro-F1", "Weighted-F1"],
+                "Điểm": [95.76, 87.96, 95.79]
+            })
 
-    with text_col:
-        st.markdown("""
-<div style="
-padding:16px;
-border-radius:16px;
-background:rgba(6,182,212,.10);
-border:1px solid rgba(6,182,212,.25);
-color:#e2e8f0;
-line-height:1.6;
-">
-📊 Mô hình Linear SVC đạt Macro-F1 87,96%.
-NOVA 2 là nhóm có F1-score thấp nhất do số lượng
-mẫu ít hơn đáng kể so với các nhóm còn lại.
-</div>
-""", unsafe_allow_html=True)
+            chart = alt.Chart(chart_data).mark_bar(
+                color="#0ea5e9",
+                cornerRadiusEnd=4
+            ).encode(
+                x=alt.X(
+                    "Điểm:Q",
+                    scale=alt.Scale(domain=[0, 100]),
+                    axis=alt.Axis(
+                        title=None,
+                        labelColor="#94a3b8",
+                        gridColor="#334155",
+                        tickColor="#475569"
+                    )
+                ),
+                y=alt.Y(
+                    "Chỉ số:N",
+                    sort=None,
+                    axis=alt.Axis(
+                        title=None,
+                        labelColor="#cbd5e1",
+                        domain=False,
+                        ticks=False
+                    )
+                ),
+                tooltip=["Chỉ số", "Điểm"]
+            ).properties(
+                height=180,
+                background="#0b1220"
+            ).configure_view(
+                stroke="transparent"
+            ).configure_axis(
+                labelFont="Inter",
+                labelFontSize=12
+            )
+
+            st.altair_chart(chart, use_container_width=True)
+
+            with text_col:
+                st.markdown("""
+    <div style="
+    padding:16px;
+    border-radius:16px;
+    background:rgba(6,182,212,.10);
+    border:1px solid rgba(6,182,212,.25);
+    color:#e2e8f0;
+    line-height:1.6;
+    ">
+    📊 Mô hình Linear SVC đạt Macro-F1 87,96%.
+    NOVA 2 là nhóm có F1-score thấp nhất do số lượng
+    mẫu ít hơn đáng kể so với các nhóm còn lại.
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("#### Cấu hình thực nghiệm")
 
@@ -782,7 +817,7 @@ mẫu ít hơn đáng kể so với các nhóm còn lại.
         "F1-score": [0.8992, 0.7289, 0.9085, 0.9816],
     })
 
-    
+    st.table(report)
 
     st.caption(
         "Kết quả được đánh giá trên tập kiểm tra gồm 197.785 mẫu "

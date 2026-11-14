@@ -1,63 +1,200 @@
+
+import csv
 import pandas as pd
+
 from src.nova.config import (
-    RAW_DATA_PATH, PROCESSED_DATA_PATH, VIETNAM_DATA_PATH, TEXT_COLUMN, TARGET_COLUMN
+    RAW_DATA_PATH,
+    PROCESSED_DATA_PATH,
+    TEXT_COLUMN,
+    TARGET_COLUMN,
 )
 
-REQUIRED_COLUMNS = [TEXT_COLUMN, TARGET_COLUMN]
-VIETNAM_COLUMN = "is_vietnam"
-VIET_CHARS = "[ăđơư\u1ea0-\u1ef9]"  # ký tự đặc trưng tiếng Việt
+CHUNKSIZE = 10000
+
+REQUIRED_COLUMNS = [
+    TEXT_COLUMN,
+    TARGET_COLUMN,
+]
+
+OPTIONAL_COLUMNS = [
+    "product_name",
+    "countries_tags",
+    "countries_en",
+]
 
 
-def prepare_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
+def clean_text(value):
+    if pd.isna(value):
+        return ""
+
+    return " ".join(str(value).strip().split())
+
+
+def prepare_dataframe(df):
+    # Kiểm tra các cột bắt buộc
+    missing = [
+        col for col in REQUIRED_COLUMNS
+        if col not in df.columns
+    ]
+
     if missing:
-        raise ValueError(f"Thiếu cột bắt buộc: {missing}")
+        raise ValueError(
+            f"Thiếu các cột bắt buộc: {missing}"
+        )
 
-    result = df.copy()
-    result[TEXT_COLUMN] = result[TEXT_COLUMN].fillna("").astype(str).str.strip()
-    result[TARGET_COLUMN] = pd.to_numeric(result[TARGET_COLUMN], errors="coerce")
-    result = result.dropna(subset=[TARGET_COLUMN])
-    result = result[result[TARGET_COLUMN].isin([1, 2, 3, 4])]
-    result = result[result[TEXT_COLUMN] != ""]
-    result[TARGET_COLUMN] = result[TARGET_COLUMN].astype(int)
-    return result.drop_duplicates().reset_index(drop=True)
+    # Làm sạch nguyên liệu
+    df[TEXT_COLUMN] = df[TEXT_COLUMN].apply(clean_text)
 
-
-def add_vietnamese_flag(df: pd.DataFrame) -> pd.DataFrame:
-    """Thêm cột co_chu_viet = 1 nếu thành phần có chữ tiếng Việt (có dấu)."""
-    result = df.copy()
-    result["co_chu_viet"] = (
-        result[TEXT_COLUMN].str.contains(VIET_CHARS, case=False, regex=True).astype(int)
+    # Chuyển nhãn NOVA thành số
+    df[TARGET_COLUMN] = pd.to_numeric(
+        df[TARGET_COLUMN],
+        errors="coerce"
     )
-    return result
+
+    # Chỉ giữ NOVA 1, 2, 3, 4
+    df = df[
+        df[TARGET_COLUMN].isin([1, 2, 3, 4])
+    ].copy()
+
+    # Loại bỏ nguyên liệu rỗng
+    df = df[
+        df[TEXT_COLUMN].str.len() > 0
+    ].copy()
+
+    df[TARGET_COLUMN] = (
+        df[TARGET_COLUMN].astype("int8")
+    )
+
+    # Loại bỏ bản ghi trùng
+    df = df.drop_duplicates(
+        subset=[TEXT_COLUMN, TARGET_COLUMN]
+    )
+
+    return df
 
 
-def split_vietnam(df: pd.DataFrame):
-    """Trả về (sản phẩm ngoài Việt Nam, sản phẩm Việt Nam)."""
-    if VIETNAM_COLUMN not in df.columns:
-        return df.reset_index(drop=True), df.iloc[0:0]
-    vietnam = df[df[VIETNAM_COLUMN] == 1].reset_index(drop=True)
-    others = df[df[VIETNAM_COLUMN] == 0].reset_index(drop=True)
-    return others, vietnam
+def add_vietnam_flag(df):
+    countries_tags = (
+        df["countries_tags"]
+        if "countries_tags" in df.columns
+        else pd.Series("", index=df.index)
+    )
+
+    countries_en = (
+        df["countries_en"]
+        if "countries_en" in df.columns
+        else pd.Series("", index=df.index)
+    )
+
+    countries = (
+        countries_tags.fillna("")
+        + ","
+        + countries_en.fillna("")
+    ).str.lower()
+
+    df["is_vietnam"] = countries.str.contains(
+        r"vietnam|việt nam",
+        regex=True,
+        na=False
+    ).astype("int8")
+
+    return df
 
 
 def main():
+    print("Đang đọc dữ liệu nguồn...")
+
     if not RAW_DATA_PATH.exists():
         raise FileNotFoundError(
-            f"Không tìm thấy {RAW_DATA_PATH}. Hãy đặt dữ liệu nguồn vào data/raw/off_nova.csv"
+            f"Không tìm thấy file: {RAW_DATA_PATH}"
         )
-    df = pd.read_csv(RAW_DATA_PATH)
-    cleaned = add_vietnamese_flag(prepare_dataframe(df))
-    others, vietnam = split_vietnam(cleaned)
 
-    PROCESSED_DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
-    others.to_csv(PROCESSED_DATA_PATH, index=False)
-    vietnam.to_csv(VIETNAM_DATA_PATH, index=False)
+    RAW_DATA_PATH.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
 
-    print(f"Đã lưu {len(others)} dòng (ngoài Việt Nam) vào {PROCESSED_DATA_PATH}")
-    print(f"Đã lưu {len(vietnam)} dòng (Việt Nam) vào {VIETNAM_DATA_PATH}")
-    if len(vietnam):
-        print("Trong đó có chữ tiếng Việt:", int(vietnam["co_chu_viet"].sum()))
+    PROCESSED_DATA_PATH.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    reader = pd.read_csv(
+        RAW_DATA_PATH,
+        sep="\t",
+        encoding="utf-8-sig",
+        dtype=str,
+        engine="c",
+        quoting=csv.QUOTE_NONE,
+        chunksize=CHUNKSIZE,
+        usecols=lambda col: (
+            col in REQUIRED_COLUMNS + OPTIONAL_COLUMNS
+        ),
+        on_bad_lines="warn",
+    )
+
+    processed_chunks = []
+    total_rows = 0
+
+    for chunk in reader:
+        total_rows += len(chunk)
+
+        chunk = prepare_dataframe(chunk)
+        chunk = add_vietnam_flag(chunk)
+
+        if not chunk.empty:
+            processed_chunks.append(chunk)
+
+        print(
+            f"Đã đọc {total_rows:,} dòng nguồn..."
+        )
+
+    if not processed_chunks:
+        raise ValueError(
+            "Không còn dữ liệu hợp lệ sau khi làm sạch."
+        )
+
+    result = pd.concat(
+        processed_chunks,
+        ignore_index=True
+    )
+
+    result = result.drop_duplicates(
+        subset=[TEXT_COLUMN, TARGET_COLUMN]
+    )
+
+    # Lưu toàn bộ dữ liệu đã xử lý
+    result.to_csv(
+        PROCESSED_DATA_PATH,
+        index=False,
+        encoding="utf-8-sig"
+    )
+
+    # Tách dữ liệu có thông tin quốc gia Việt Nam
+    vietnam_path = (
+        PROCESSED_DATA_PATH.parent
+        / "off_nova_vietnam.csv"
+    )
+
+    vietnam = result[
+        result["is_vietnam"] == 1
+    ].copy()
+
+    vietnam.to_csv(
+        vietnam_path,
+        index=False,
+        encoding="utf-8-sig"
+    )
+
+    print("\n===== KẾT QUẢ TIỀN XỬ LÝ =====")
+    print(f"Tổng dòng nguồn đã đọc: {total_rows:,}")
+    print(f"Tổng sản phẩm hợp lệ: {len(result):,}")
+    print(f"Dữ liệu Việt Nam: {len(vietnam):,}")
+    print(f"Dữ liệu quốc tế/không xác định: {len(result) - len(vietnam):,}")
+    print("\nPhân bố nhãn NOVA:")
+    print(result[TARGET_COLUMN].value_counts().sort_index())
+    print(f"\nĐã lưu: {PROCESSED_DATA_PATH}")
+    print(f"Đã lưu: {vietnam_path}")
 
 
 if __name__ == "__main__":

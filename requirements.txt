@@ -6,7 +6,16 @@ streamlit>=1.30
 matplotlib>=3.7
 seaborn>=0.13
 openpyxl>=3.1
+opencv-python>=4.8.0
+pyzbar>=0.1.9
+pillow>=10.4
+zxing-cpp>=2.2.0
+requests>=2.31
+altair>=5.0
 # Tùy chọn:
 # xgboost>=2.0
 # opencv-python>=4.8
 # pyzbar>=0.1.9
+
+#zbar native library is required for pyzbar to work properly. You can install it using the following command:
+python -c "from pyzbar.pyzbar import decode; print('ZBar OK')"

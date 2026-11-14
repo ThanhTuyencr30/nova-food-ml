@@ -1,6 +1,26 @@
 import html
 import re
 import time
+import io
+from urllib.parse import quote_plus
+
+import numpy as np
+from PIL import Image, ImageOps, ImageEnhance
+
+try:
+    import zxingcpp
+except ImportError:
+    zxingcpp = None
+
+try:
+    from pyzbar.pyzbar import decode as zbar_decode
+except Exception:
+    zbar_decode = None
+
+try:
+    import requests
+except ImportError:
+    requests = None
 
 import pandas as pd
 import streamlit as st
@@ -20,6 +40,124 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+st.markdown("""
+<style>
+/* ===== MÀU CHỮ TOÀN ỨNG DỤNG ===== */
+html, body, [class*="css"] {
+    color: #F1F5F9 !important;
+}
+
+.stApp {
+    background-color: #0B1720;
+    color: #F1F5F9 !important;
+}
+
+/* Tiêu đề */
+h1, h2, h3, h4, h5, h6 {
+    color: #67E8D4 !important;
+    font-weight: 700 !important;
+}
+
+/* Nội dung và đoạn văn */
+p, span, label, li, div {
+    color: #E2E8F0;
+}
+
+/* Chữ phụ */
+small, .caption, [data-testid="stCaptionContainer"] {
+    color: #AFC2D0 !important;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background-color: #10232E !important;
+}
+
+[data-testid="stSidebar"] * {
+    color: #F1F5F9 !important;
+}
+
+/* Tab */
+button[data-baseweb="tab"] {
+    color: #CBD5E1 !important;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: #5EEAD4 !important;
+    font-weight: 700 !important;
+}
+
+/* Ô nhập liệu */
+input, textarea {
+    color: #F8FAFC !important;
+    background-color: #18313D !important;
+    caret-color: #5EEAD4 !important;
+}
+
+[data-baseweb="select"] * {
+    color: #F8FAFC !important;
+}
+
+/* Placeholder */
+input::placeholder,
+textarea::placeholder {
+    color: #9FB3C1 !important;
+    opacity: 1 !important;
+}
+
+/* Nút bấm */
+.stButton > button {
+    background-color: #0F766E !important;
+    color: #FFFFFF !important;
+    border: 1px solid #2DD4BF !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+}
+
+.stButton > button:hover {
+    background-color: #115E59 !important;
+    color: #FFFFFF !important;
+    border-color: #5EEAD4 !important;
+}
+
+/* Thẻ thông tin */
+[data-testid="stMetric"],
+[data-testid="stAlert"],
+[data-testid="stExpander"] {
+    color: #F1F5F9 !important;
+}
+
+/* Bảng dữ liệu */
+[data-testid="stDataFrame"] *,
+[data-testid="stTable"] * {
+    color: #E2E8F0 !important;
+}
+
+/* Kết quả phân loại */
+.result-box {
+    background-color: #15313B;
+    border: 1px solid #2DD4BF;
+    border-radius: 12px;
+    padding: 18px;
+    color: #F8FAFC !important;
+}
+
+.result-box * {
+    color: #F8FAFC !important;
+}
+
+/* Link */
+a {
+    color: #5EEAD4 !important;
+}
+
+/* Checkbox và radio */
+[data-testid="stCheckbox"] *,
+[data-testid="stRadio"] * {
+    color: #E2E8F0 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 MIN_LOADING_SECONDS = 2.2  # thời gian tối thiểu hiển thị hiệu ứng chờ
 
@@ -223,6 +361,11 @@ footer{ visibility:hidden; }
 .hist-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
 .hist-txt{
     color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* PRODUCT SEARCH */
+[data-testid="stLinkButton"] a{
+    border-radius:12px !important; font-weight:700 !important;
 }
 
 /* BUTTON */
@@ -434,6 +577,98 @@ def run_prediction() -> None:
         }
 
 
+
+def decode_barcode_image(uploaded_file) -> list[str]:
+    """Đọc mã vạch từ ảnh gốc và các phiên bản ảnh đã tăng chất lượng."""
+    if zxingcpp is None and zbar_decode is None:
+        raise RuntimeError(
+            "Chưa có bộ giải mã mã vạch. Hãy cài bằng: pip install zxing-cpp"
+        )
+    image = Image.open(io.BytesIO(uploaded_file.getvalue())).convert("RGB")
+    base = ImageOps.exif_transpose(image)
+    variants = []
+
+    for angle in (0, 90, 180, 270):
+        rotated = base.rotate(angle, expand=True) if angle else base
+        gray = ImageOps.grayscale(rotated)
+        variants.extend([rotated, gray, ImageOps.autocontrast(gray),
+                         ImageEnhance.Contrast(gray).enhance(2.0)])
+        if max(gray.size) < 2200:
+            scale = 3 if max(gray.size) < 900 else 2
+            variants.append(gray.resize((gray.width * scale, gray.height * scale)))
+        for threshold in (100, 140, 180):
+            variants.append(gray.point(lambda px, t=threshold: 255 if px > t else 0))
+
+    found, seen = [], set()
+    for candidate in variants:
+        if zxingcpp is not None:
+            try:
+                for item in zxingcpp.read_barcodes(np.asarray(candidate)):
+                    value = str(item.text).strip()
+                    if value and value not in seen:
+                        seen.add(value)
+                        found.append(value)
+            except Exception:
+                pass
+        if zbar_decode is not None:
+            try:
+                for item in zbar_decode(candidate):
+                    value = item.data.decode("utf-8", errors="ignore").strip()
+                    if value and value not in seen:
+                        seen.add(value)
+                        found.append(value)
+            except Exception:
+                pass
+        if found:
+            break
+    return found
+
+
+def predict_from_barcode(barcode: str) -> None:
+    """Tra cứu Open Food Facts và dự đoán NOVA từ danh sách thành phần."""
+    if requests is None:
+        st.error("Thiếu requests. Cài bằng lệnh: pip install requests")
+        return
+    try:
+        url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
+        response = requests.get(
+            url, headers={"User-Agent": "NOVA-Food-Classifier/1.0"}, timeout=20
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if payload.get("status") != 1 or not payload.get("product"):
+            st.error(f"Đã đọc mã {barcode} nhưng Open Food Facts không có sản phẩm này.")
+            return
+
+        product = payload["product"]
+        product_name = (product.get("product_name") or product.get("product_name_vi")
+                        or product.get("product_name_en") or "Sản phẩm chưa có tên")
+        ingredients = (product.get("ingredients_text") or
+                       product.get("ingredients_text_vi") or
+                       product.get("ingredients_text_en") or "").strip()
+        if not ingredients:
+            st.warning(f"Tìm thấy {product_name}, nhưng chưa có danh sách thành phần.")
+            return
+
+        label, description = predict_ingredients(ingredients)
+        scores = {int(k): float(v) for k, v in predict_proba_ingredients(ingredients).items()}
+        st.session_state["ingredients"] = ingredients
+        st.session_state["result"] = {
+            "kind": "ok", "text": ingredients, "label": int(label),
+            "description": description, "scores": scores,
+            "product_name": product_name, "barcode": barcode,
+        }
+        st.session_state["history"].insert(
+            0, {"label": int(label), "text": f"{product_name}: {ingredients}"}
+        )
+        st.session_state["history"] = st.session_state["history"][:6]
+        st.success(f"Đã tra cứu và phân loại: {product_name}")
+    except FileNotFoundError as exc:
+        st.error(f"Chưa tìm thấy mô hình đã huấn luyện: {exc}")
+    except Exception as exc:
+        st.error(f"Không thể tra cứu mã vạch: {exc}")
+
+
 def split_ingredients(text: str) -> list[str]:
     parts = re.split(r"[,;]", text)
     return [p.strip(" .\n\t") for p in parts if p.strip(" .\n\t")]
@@ -542,11 +777,128 @@ st.markdown(
 )
 
 # ==============================
-# TABS  (trước đây bị thiếu đoạn này)
+# THANH CHỨC NĂNG CHÍNH – CHỌN Ở HÀNG ĐẦU
 # ==============================
-tab_predict, tab_nova, tab_model = st.tabs(
-    ["🔮 Dự đoán", "📚 Hiểu về NOVA", "🧠 Về mô hình"]
+tab_barcode,tab_search, tab_predict, tab_nova, tab_model = st.tabs(
+    ["📷 Quét mã vạch","🔎 Tìm sản phẩm", "🔮 Dự đoán NOVA", "📚 Hiểu về NOVA", "🧠 Về mô hình"]
 )
+
+# TAB QUÉT MÃ VẠCH
+with tab_barcode:
+    st.markdown('<div class="sec-title">📷 Quét mã vạch sản phẩm</div>', unsafe_allow_html=True)
+    st.caption("Chụp mã vạch bằng camera hoặc tải ảnh lên để tra cứu Open Food Facts và phân loại thành phần.")
+    st.markdown('<div class="sec-title"></div>', unsafe_allow_html=True)
+    with st.expander("Mở chức năng quét mã vạch", expanded=False):
+        st.caption("Chụp mã vạch bằng camera hoặc tải ảnh lên. Ứng dụng sẽ đọc mã, tra cứu Open Food Facts và phân loại thành phần.")
+        camera_image = st.camera_input("Chụp mã vạch bằng camera", key="barcode_camera")
+        uploaded_image = st.file_uploader(
+            "Hoặc tải ảnh mã vạch", type=["png", "jpg", "jpeg", "webp"],
+            key="barcode_image_upload"
+        )
+        selected_image = camera_image if camera_image is not None else uploaded_image
+        if selected_image is not None:
+            st.image(selected_image, caption="Ảnh dùng để quét", use_container_width=True)
+
+        if st.button("🔍 Đọc ảnh và tra cứu sản phẩm", key="decode_barcode_button",
+                     use_container_width=True, type="primary",
+                     disabled=selected_image is None):
+            with st.spinner("Đang xử lý ảnh và tìm mã vạch..."):
+                try:
+                    barcodes = decode_barcode_image(selected_image)
+                    if not barcodes:
+                        st.error("Chưa đọc được mã vạch. Hãy chụp gần hơn, đủ sáng, "
+                                 "để mã vạch nằm ngang và không bị lóa; hoặc nhập mã bằng tay.")
+                    else:
+                        st.success("Đã đọc mã vạch: " + ", ".join(barcodes))
+                        predict_from_barcode(barcodes[0])
+
+                except Exception as exc:
+                    st.error(f"Không xử lý được ảnh: {exc}")
+
+        st.divider()
+        st.markdown("**Không quét được? Nhập mã vạch bằng tay**")
+        manual_barcode = st.text_input(
+            "Mã vạch (EAN/UPC)", key="manual_barcode_input",
+            placeholder="Nhập dãy số bên dưới mã vạch"
+        )
+        if st.button("Tra cứu mã đã nhập", key="lookup_manual_barcode",
+                     use_container_width=True, disabled=not manual_barcode.strip()):
+            digits = re.sub(r"\D", "", manual_barcode)
+            if len(digits) not in (8, 12, 13, 14):
+                st.warning("Mã EAN/UPC thường có 8, 12, 13 hoặc 14 chữ số.")
+            else:
+                predict_from_barcode(digits)
+
+# TAB 0: TÌM SẢN PHẨM THEO TÊN TRÊN NHIỀU WEBSITE
+with tab_search:
+    st.markdown('<div class="sec-title">🔎 Tìm kiếm sản phẩm thực phẩm</div>', unsafe_allow_html=True)
+    st.caption("Nhập tên sản phẩm để tra cứu cơ sở dữ liệu thực phẩm và mở kết quả tìm kiếm trên nhiều website.")
+    product_query = st.text_input(
+        "Tên sản phẩm", key="product_search_name",
+        placeholder="Ví dụ: mì Hảo Hảo, Coca-Cola, sữa chua Vinamilk..."
+    )
+    if st.button("Tìm sản phẩm", key="search_product_button", type="primary",
+                 use_container_width=True, disabled=not product_query.strip()):
+        st.session_state["product_search_submitted"] = product_query.strip()
+
+    query = st.session_state.get("product_search_submitted", "")
+    if query:
+        q = quote_plus(query)
+        st.markdown("#### Tìm trên các website")
+        links = [
+            ("Google", f"https://www.google.com/search?q={q}"),
+            ("Bing", f"https://www.bing.com/search?q={q}"),
+            ("DuckDuckGo", f"https://duckduckgo.com/?q={q}"),
+            ("Google Shopping", f"https://www.google.com/search?tbm=shop&q={q}"),
+            ("Open Food Facts", f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={q}&search_simple=1&action=process"),
+        ]
+        link_cols = st.columns(len(links))
+        for col, (label, url) in zip(link_cols, links):
+            with col:
+                st.link_button(label, url, use_container_width=True)
+
+        st.markdown("#### Kết quả từ Open Food Facts")
+        if requests is None:
+            st.warning("Thiếu thư viện requests. Cài bằng: pip install requests")
+        else:
+            try:
+                response = requests.get(
+                    "https://world.openfoodfacts.org/cgi/search.pl",
+                    params={"search_terms": query, "search_simple": 1, "action": "process",
+                            "json": 1, "page_size": 12,
+                            "fields": "product_name,brands,code,ingredients_text,image_url,url"},
+                    headers={"User-Agent": "NOVA-Food-Classifier/1.0"}, timeout=20
+                )
+                response.raise_for_status()
+                products = response.json().get("products", [])
+                products = [x for x in products if x.get("product_name")]
+                if not products:
+                    st.info("Chưa tìm thấy sản phẩm trong Open Food Facts. Bạn có thể mở Google hoặc Bing ở phía trên để tìm rộng hơn.")
+                else:
+                    for item in products:
+                        name = item.get("product_name", "Sản phẩm chưa có tên")
+                        brand = item.get("brands", "Chưa rõ thương hiệu")
+                        code = item.get("code", "")
+                        ingredients = item.get("ingredients_text", "")
+                        with st.container(border=True):
+                            c1, c2 = st.columns([1, 4])
+                            with c1:
+                                if item.get("image_url"):
+                                    st.image(item["image_url"], use_container_width=True)
+                            with c2:
+                                st.markdown(f"**{html.escape(name)}**")
+                                st.caption(f"Thương hiệu: {html.escape(brand)} · Mã vạch: {html.escape(code or 'Không có')}")
+                                if ingredients:
+                                    st.write("**Thành phần:** " + ingredients[:500] + ("..." if len(ingredients) > 500 else ""))
+                                else:
+                                    st.caption("Chưa có dữ liệu thành phần.")
+                                if code and st.button("Dùng sản phẩm này để tra cứu/phân loại", key=f"use_product_{code}"):
+                                    predict_from_barcode(code)
+                                if item.get("url"):
+                                    st.link_button("Mở trang sản phẩm", item["url"])
+            except Exception as exc:
+                st.error(f"Không thể tìm sản phẩm lúc này: {exc}")
+
 
 # ==============================
 # TAB 1: DỰ ĐOÁN
@@ -575,12 +927,16 @@ with tab_predict:
             with col:
                 st.button(name, key=f"ex_{name}", use_container_width=True, on_click=use_example, args=(text,))
 
+
         with st.expander("Mẹo nhập để kết quả tốt hơn"):
             st.markdown(
                 "- Nhập đủ toàn bộ danh sách thành phần, đừng chỉ chép vài dòng đầu.\n"
                 "- Giữ nguyên thứ tự trên nhãn, vì thành phần được xếp theo khối lượng giảm dần.\n"
                 "- Các ví dụ dùng tiếng Anh. Nếu nhãn tiếng Việt cho kết quả lạ, hãy thử nhập bản tiếng Anh."
             )
+
+
+
 
     with right:
         slot = st.empty()
@@ -611,6 +967,11 @@ with tab_predict:
             elif result["kind"] == "error":
                 st.error(result["message"])
             else:
+                if result.get("product_name"):
+                    st.markdown(
+                        f"**Sản phẩm:** {html.escape(result['product_name'])} · "
+                        f"**Mã vạch:** `{html.escape(result.get('barcode', ''))}`"
+                    )
                 st.markdown(render_label_panel(result), unsafe_allow_html=True)
 
     # Phân tích thành phần (chỉ khi có kết quả)
@@ -646,6 +1007,8 @@ with tab_predict:
 
     st.markdown('<div class="sec-title">Bốn nhóm NOVA</div>', unsafe_allow_html=True)
     render_ladder(result["label"] if result and result["kind"] == "ok" else None)
+
+
 
 # ==============================
 # TAB 2: HIỂU VỀ NOVA

@@ -229,9 +229,82 @@ textarea::placeholder, input::placeholder { color:#9fb3c1 !important; opacity:1 
 .nova-loading-text { color:#e7f6f5; font-size:.96rem; }
 @keyframes nova-spin { to { transform:rotate(360deg); } }
 @keyframes nova-spin-reverse { to { transform:rotate(-360deg); } }
+/* ---------- Màn hình khởi động ---------- */
+.nova-splash {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  min-height:62vh; gap:18px; text-align:center;
+  animation:nova-fade-in .4s ease both;
+}
+.nova-splash-logo {
+  font-size:3.6rem; line-height:1;
+  animation:nova-float 1.8s ease-in-out infinite;
+  filter:drop-shadow(0 8px 18px rgba(45,212,191,.35));
+}
+.nova-splash-title { font-size:1.5rem; font-weight:800; color:#f8fafc; letter-spacing:.4px; }
+.nova-splash-title span {
+  background:linear-gradient(90deg,#5eead4,#a78bfa,#5eead4); background-size:200% auto;
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:nova-shimmer 2.4s linear infinite;
+}
+.nova-splash-bar {
+  position:relative; width:min(340px, 80vw); height:8px; border-radius:99px;
+  overflow:hidden; background:#263d49;
+}
+.nova-splash-bar-fill {
+  height:100%; border-radius:99px;
+  background:linear-gradient(90deg,#14b8a6,#5eead4,#a78bfa);
+  box-shadow:0 0 12px rgba(94,234,212,.55);
+  transition:width .35s ease;
+}
+.nova-splash-step { color:#a9bdc9; font-size:.92rem; min-height:1.3em; }
+.nova-dots span {
+  display:inline-block; width:8px; height:8px; margin:0 3px; border-radius:50%;
+  background:#5eead4; animation:nova-bounce 1s ease-in-out infinite;
+}
+.nova-dots span:nth-child(2) { animation-delay:.15s; background:#2dd4bf; }
+.nova-dots span:nth-child(3) { animation-delay:.3s; background:#a78bfa; }
+/* ---------- Màn hình chuyển trang: mèo xoay ---------- */
+.nova-cat-overlay {
+  position:fixed; inset:0; z-index:999999; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px;
+  background:radial-gradient(circle at 50% 42%, rgba(15,118,110,.55), rgba(7,19,28,.95) 70%);
+  backdrop-filter:blur(4px); animation:nova-fade-in .25s ease both;
+}
+.nova-cat-wrap { position:relative; width:128px; height:128px; display:flex; align-items:center; justify-content:center; }
+.nova-cat-orbit {
+  position:absolute; inset:0; border-radius:50%;
+  border:3px dashed rgba(94,234,212,.38); animation:nova-spin 6s linear infinite;
+}
+.nova-cat {
+  display:inline-block; font-size:4rem; line-height:1;
+  animation:nova-cat-spin 1.15s cubic-bezier(.5,0,.5,1) infinite;
+  filter:drop-shadow(0 8px 14px rgba(0,0,0,.4));
+}
+.nova-cat-text { font-size:1.18rem; font-weight:750; color:#f8fafc; min-height:1.5em; }
+.nova-cat-sub { color:#a9bdc9; font-size:.88rem; }
+@keyframes nova-cat-spin {
+  0%   { transform:rotate(0deg) scale(1); }
+  50%  { transform:rotate(180deg) scale(1.28); }
+  100% { transform:rotate(360deg) scale(1); }
+}
+@keyframes nova-pop { 0% { opacity:0; transform:scale(.55); } 70% { transform:scale(1.08); } 100% { opacity:1; transform:scale(1); } }
+.result-badge { animation:nova-pop .65s .15s cubic-bezier(.2,1.4,.4,1) both; }
+/* ---------- Hiệu ứng xuất hiện nội dung ---------- */
+.block-container { animation:nova-fade-up .5s ease both; }
+.hero, .result-card, .nova-card, .nv, .step, .empty-box { animation:nova-fade-up .5s ease both; }
+.score-fill { transform-origin:left center; animation:nova-grow .9s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes nova-fade-in { from { opacity:0; } to { opacity:1; } }
+@keyframes nova-fade-up { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+@keyframes nova-grow { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+@keyframes nova-float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
+@keyframes nova-bounce { 0%,80%,100% { transform:translateY(0); opacity:.5; } 40% { transform:translateY(-7px); opacity:1; } }
+@keyframes nova-shimmer { to { background-position:200% center; } }
 @media(prefers-reduced-motion:reduce){
   .nova-spinner-ring { animation-duration:2.5s; }
   .nova-spinner-ring-inner { animation-duration:2s; }
+  .nova-splash-logo, .nova-dots span, .nova-splash-title span,
+  .block-container, .hero, .result-card, .nova-card, .nv, .step, .empty-box, .score-fill,
+  .nova-cat, .nova-cat-orbit, .result-badge { animation:none; }
 }
 @media(max-width:700px){ .hero {padding:20px;} .hero-title{font-size:1.6rem;} }
 </style>
@@ -251,6 +324,8 @@ DEFAULT_STATE = {
     "selected_product": None,
     "barcode_context": "",
     "navigate_to_prediction": False,
+    "app_ready": False,
+    "scan_nonce": 0,
 }
 for key, value in DEFAULT_STATE.items():
     if key not in st.session_state:
@@ -268,21 +343,48 @@ if st.session_state.get("navigate_to_prediction"):
 def nova_spinner(message: str):
     """Hiển thị hai vòng tròn đồng tâm xoay ngược chiều trong lúc xử lý."""
     loading = st.empty()
-    loading.markdown(
-        '<div class="nova-loading">'
-        '<span class="nova-spinner" aria-hidden="true">'
-        '<span class="nova-spinner-ring"></span>'
-        '<span class="nova-spinner-ring-inner"></span>'
-        '</span>'
-        f'<span class="nova-loading-text">{html.escape(message)}</span>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
+    def update(text: str) -> None:
+        loading.markdown(
+            '<div class="nova-loading">'
+            '<span class="nova-spinner" aria-hidden="true">'
+            '<span class="nova-spinner-ring"></span>'
+            '<span class="nova-spinner-ring-inner"></span>'
+            '</span>'
+            f'<span class="nova-loading-text">{html.escape(text)}</span>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    update(message)
     try:
-        yield
+        yield update
     finally:
         loading.empty()
 
+CAT_MESSAGES = [
+    "Mèo đang đọc nhãn thành phần...",
+    "Mèo đang đếm phụ gia, đừng làm mèo mất tập trung nha 🐾",
+    "Mèo đang hỏi ý kiến mô hình NOVA...",
+    "Sắp xong rồi, mèo hồi hộp quá...",
+]
+CAT_STEP_SECONDS = 0.6  # tổng thời gian chờ = số câu x giây (mặc định khoảng 2,4 giây)
+def cat_transition() -> None:
+    """Màn hình chờ vui vui khi chuyển sang trang Dự đoán NOVA: mèo xoay tròn."""
+    overlay = st.empty()
+    for message in CAT_MESSAGES:
+        overlay.markdown(
+            '<div class="nova-cat-overlay">'
+            '<div class="nova-cat-wrap">'
+            '<div class="nova-cat-orbit"></div>'
+            '<div class="nova-cat">🐱</div>'
+            '</div>'
+            f'<div class="nova-cat-text">{html.escape(message)}</div>'
+            '<div class="nova-dots"><span></span><span></span><span></span></div>'
+            '<div class="nova-cat-sub">Kết quả sắp hiện ra...</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        time.sleep(CAT_STEP_SECONDS)
+    overlay.empty()
 # ============================================================
 # HÀM TIỆN ÍCH VÀ MÔ HÌNH
 # ============================================================
@@ -291,8 +393,8 @@ def meta(label: int) -> dict:
 def flat(value: str) -> str:
     return " ".join(line.strip() for line in value.splitlines() if line.strip())
 def split_ingredients(text: str) -> list[str]:
-    parts = re.split(r"[,;**\n**]", text or "")
-    return [part.strip(" .\t\r") for part in parts if part.strip(" .\t\r")]
+    parts = re.split(r"[,;\n]", text or "")
+    return [part.strip(" .*\t\r") for part in parts if part.strip(" .*\t\r")]
 def scan_markers(text: str) -> dict:
     found = {}
     lowered = (text or "").lower()
@@ -308,6 +410,39 @@ def predict_cached(text: str) -> tuple[int, str, dict]:
     raw_scores = predict_proba_ingredients(text)
     scores = {int(key): float(value) for key, value in raw_scores.items()}
     return int(label), str(description), scores
+def show_startup_splash() -> None:
+    """Màn hình chờ lần đầu mở app: nạp mô hình trước để lần dự đoán đầu tiên không bị khựng."""
+    placeholder = st.empty()
+    steps = [
+        (15, "Đang khởi tạo giao diện..."),
+        (55, "Đang nạp mô hình TF-IDF + Linear SVC..."),
+        (85, "Đang khởi động bộ phân loại NOVA..."),
+        (100, "Sẵn sàng!"),
+    ]
+    def draw(percent: int, text: str) -> None:
+        placeholder.markdown(
+            '<div class="nova-splash">'
+            '<div class="nova-splash-logo">🥗</div>'
+            f'<div class="nova-splash-title"><span>{html.escape(APP_NAME)}</span></div>'
+            f'<div class="nova-splash-bar"><div class="nova-splash-bar-fill" style="width:{percent}%"></div></div>'
+            f'<div class="nova-splash-step">{html.escape(text)}</div>'
+            '<div class="nova-dots"><span></span><span></span><span></span></div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    draw(*steps[0])
+    time.sleep(0.25)
+    draw(*steps[1])
+    try:
+        predict_cached("water, sugar, salt")  # warm-up: nạp mô hình vào bộ nhớ/cache
+    except Exception:  # noqa: BLE001
+        pass  # nếu lỗi, trang Dự đoán sẽ báo lỗi chi tiết như bình thường
+    draw(*steps[2])
+    time.sleep(0.25)
+    draw(*steps[3])
+    time.sleep(0.2)
+    placeholder.empty()
+    st.session_state["app_ready"] = True
 def add_history(label: int, text: str) -> None:
     item = {"label": int(label), "text": str(text)[:500]}
     history = st.session_state.get("history", [])
@@ -354,6 +489,15 @@ def clear_prediction() -> None:
     st.session_state["result"] = None
     st.session_state["selected_product"] = None
     st.session_state["barcode_context"] = ""
+def clear_scan_inputs() -> None:
+    """Đổi nonce để camera và ô tải ảnh được tạo lại (xóa ảnh đã chọn)."""
+    st.session_state["scan_nonce"] = st.session_state.get("scan_nonce", 0) + 1
+def clear_manual_barcode() -> None:
+    st.session_state["manual_barcode_input"] = ""
+def clear_product_search() -> None:
+    st.session_state["product_search_name"] = ""
+    st.session_state["product_search_submitted"] = ""
+    st.session_state["product_search_results"] = []
 def use_example(text: str) -> None:
     st.session_state["ingredients"] = text
     st.session_state["result"] = None
@@ -471,36 +615,42 @@ def fetch_product_by_barcode(barcode: str) -> dict | None:
         url,
         params={"fields": OFF_FIELDS},
         headers={"User-Agent": USER_AGENT},
-        timeout=(5, 12),
+        timeout=(8, 30),
     )
     response.raise_for_status()
     payload = response.json()
     if payload.get("status") != 1 or not payload.get("product"):
         return None
     return normalize_product(payload["product"])
-@st.cache_data(ttl=900, show_spinner=False, max_entries=128)
-def search_products_online(query: str) -> list[dict]:
-    if requests is None:
-        raise RuntimeError("Thiếu requests. Cài bằng: pip install requests")
-    query = query.strip()
-    if len(query) < 2:
-        return []
-    endpoint = "https://world.openfoodfacts.org/cgi/search.pl"
-    params = {
-        "search_terms": query,
-        "search_simple": 1,
-        "action": "process",
-        "json": 1,
-        "page_size": 24,
-        "sort_by": "unique_scans_n",
-        "fields": OFF_FIELDS,
-    }
-    response = requests.get(endpoint, params=params, headers={"User-Agent": USER_AGENT}, timeout=(5, 15))
+SEARCH_MAX_ATTEMPTS = 6          # số lần thử tối đa cho mỗi lượt tìm
+SEARCH_TIMEOUT = (8, 45)         # (chờ kết nối, chờ phản hồi) tính bằng giây
+SEARCH_RETRY_STATUS = {429, 500, 502, 503, 504}
+SEARCH_CACHE_TTL = 900           # giây
+SEARCH_CACHE_MAX = 128
+@st.cache_resource(show_spinner=False)
+def _search_cache() -> dict:
+    """Kho cache thủ công. Chỉ lưu kết quả KHÔNG rỗng, và không gọi phần tử Streamlit nào."""
+    return {}
+def _search_products_once(query: str) -> list[dict]:
+    """Một lần gọi Open Food Facts. Hàm thuần, không dùng st.* nên an toàn để thử lại."""
+    response = requests.get(
+        "https://world.openfoodfacts.org/cgi/search.pl",
+        params={
+            "search_terms": query,
+            "search_simple": 1,
+            "action": "process",
+            "json": 1,
+            "page_size": 24,
+            "sort_by": "unique_scans_n",
+            "fields": OFF_FIELDS,
+        },
+        headers={"User-Agent": USER_AGENT},
+        timeout=SEARCH_TIMEOUT,
+    )
     response.raise_for_status()
     raw_products = response.json().get("products", [])
-    results = []
-    seen = set()
     query_lower = query.casefold()
+    results, seen = [], set()
     for raw in raw_products:
         product = normalize_product(raw)
         barcode = product["barcode"]
@@ -521,6 +671,44 @@ def search_products_online(query: str) -> list[dict]:
     for item in results:
         item.pop("_rank", None)
     return results[:16]
+def search_products_online(query: str, on_retry=None) -> list[dict]:
+    """Tìm sản phẩm, thử lại nhiều lần cho tới khi có kết quả.
+    on_retry(text) chạy ở NGOÀI hàm cache nên được phép cập nhật giao diện."""
+    query = (query or "").strip()
+    if len(query) < 2:
+        return []
+    if requests is None:
+        raise RuntimeError("Thiếu requests. Cài bằng: pip install requests")
+    cache = _search_cache()
+    key = query.casefold()
+    hit = cache.get(key)
+    if hit and time.time() - hit[0] < SEARCH_CACHE_TTL:
+        return hit[1]
+    last_error = ""
+    for attempt in range(SEARCH_MAX_ATTEMPTS):
+        if attempt and on_retry:
+            on_retry(f"Đang tìm sản phẩm... (lần thử {attempt + 1}/{SEARCH_MAX_ATTEMPTS}, máy chủ đang phản hồi chậm)")
+        try:
+            results = _search_products_once(query)
+        except requests.exceptions.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            if status not in SEARCH_RETRY_STATUS:
+                raise
+            last_error = f"Máy chủ Open Food Facts đang bận (mã {status})."
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, ValueError) as exc:
+            last_error = f"Không kết nối được Open Food Facts ({type(exc).__name__}). Hãy kiểm tra Internet."
+        else:
+            if results:
+                if len(cache) >= SEARCH_CACHE_MAX:
+                    cache.pop(next(iter(cache)))
+                cache[key] = (time.time(), results)
+                return results
+            # Phản hồi rỗng: đôi khi do máy chủ quá tải, nên thử lại
+        if attempt < SEARCH_MAX_ATTEMPTS - 1:
+            time.sleep(min(2.0 * (attempt + 1), 8))
+    if last_error:
+        raise RuntimeError(last_error)
+    return []
 def web_search_links(query: str) -> list[tuple[str, str]]:
     encoded = quote_plus(query.strip())
     return [
@@ -537,6 +725,7 @@ def show_web_search_links(query: str) -> None:
         with column:
             st.link_button(label, url, use_container_width=True)
 def navigate_to_prediction() -> None:
+    cat_transition()
     st.session_state["navigate_to_prediction"] = True
     st.rerun()
 def classify_product(product: dict) -> None:
@@ -545,7 +734,8 @@ def classify_product(product: dict) -> None:
     st.session_state["ingredients"] = product.get("ingredients", "")
     st.session_state["barcode_context"] = product.get("barcode", "")
     if product.get("ingredients", "").strip():
-        make_prediction(product["ingredients"], product)
+        with nova_spinner("Đang phân tích thành phần sản phẩm..."):
+            make_prediction(product["ingredients"], product)
     else:
         st.session_state["result"] = {
             "kind": "warning",
@@ -575,21 +765,20 @@ def predict_from_barcode(barcode: str) -> None:
                 "kind": "warning",
                 "message": f"Đã đọc được mã {digits}, nhưng chưa tìm thấy hồ sơ sản phẩm tương ứng trong Open Food Facts. Bạn có thể tìm bằng mã này trên Internet hoặc nhập thành phần từ bao bì.",
             }
-            st.session_state["navigate_to_prediction"] = True
-            st.rerun()
+            navigate_to_prediction()
             return
         st.session_state["selected_product"] = product
         st.session_state["ingredients"] = product.get("ingredients", "")
         st.session_state["barcode_context"] = digits
         if product.get("ingredients", "").strip():
-            make_prediction(product["ingredients"], product)
+            with nova_spinner("Đang phân tích thành phần sản phẩm..."):
+                make_prediction(product["ingredients"], product)
         else:
             st.session_state["result"] = {
                 "kind": "warning",
                 "message": f"Đã tìm thấy {product['name']}, nhưng Open Food Facts chưa có danh sách thành phần. Hãy nhập thành phần đọc từ nhãn sản phẩm.",
             }
-        st.session_state["navigate_to_prediction"] = True
-        st.rerun()
+        navigate_to_prediction()
     except Exception as exc:  # noqa: BLE001
         st.session_state["barcode_context"] = digits
         st.session_state["result"] = {
@@ -664,6 +853,11 @@ def decode_barcode_bytes(image_bytes: bytes) -> list[str]:
 def decode_barcode_image(uploaded_file) -> list[str]:
     return decode_barcode_bytes(uploaded_file.getvalue())
 # ============================================================
+# MÀN HÌNH KHỞI ĐỘNG (chỉ chạy một lần cho mỗi phiên)
+# ============================================================
+if not st.session_state.get("app_ready"):
+    show_startup_splash()
+# ============================================================
 # SIDEBAR - ĐIỀU HƯỚNG VÀ LỊCH SỬ
 # ============================================================
 with st.sidebar:
@@ -723,22 +917,34 @@ if selected_page == "📷 Quét mã vạch":
     st.caption("Dùng camera, tải ảnh mã vạch hoặc nhập dãy số bên dưới mã vạch.")
     scan_col, help_col = st.columns([1.25, 0.75], gap="large")
     with scan_col:
-        camera_image = st.camera_input("Chụp mã vạch bằng camera", key="barcode_camera")
+        nonce = st.session_state.get("scan_nonce", 0)
+        camera_image = st.camera_input("Chụp mã vạch bằng camera", key=f"barcode_camera_{nonce}")
         uploaded_image = st.file_uploader(
             "Hoặc tải ảnh mã vạch (PNG, JPG, WEBP)",
             type=["png", "jpg", "jpeg", "webp"],
-            key="barcode_image_upload",
+            key=f"barcode_image_upload_{nonce}",
         )
         selected_image = camera_image if camera_image is not None else uploaded_image
         if selected_image is not None:
             st.image(selected_image, caption="Ảnh sẽ được dùng để nhận diện", use_container_width=True)
-        if st.button(
-            "🔍 Đọc mã vạch và tra cứu",
-            key="decode_barcode_button",
-            type="primary",
-            use_container_width=True,
-            disabled=selected_image is None,
-        ):
+        scan_cols = st.columns([3, 1])
+        with scan_cols[0]:
+            decode_clicked = st.button(
+                "🔍 Đọc mã vạch và tra cứu",
+                key="decode_barcode_button",
+                type="primary",
+                use_container_width=True,
+                disabled=selected_image is None,
+            )
+        with scan_cols[1]:
+            st.button(
+                " Xóa ảnh",
+                key="clear_scan_image",
+                on_click=clear_scan_inputs,
+                use_container_width=True,
+                disabled=selected_image is None,
+            )
+        if decode_clicked:
             try:
                 with nova_spinner("Đang nhận diện mã vạch..."):
                     barcodes = decode_barcode_image(selected_image)
@@ -762,12 +968,23 @@ if selected_page == "📷 Quét mã vạch":
             key="manual_barcode_input",
             placeholder="Ví dụ: 893xxxxxxxxxx",
         )
-        if st.button(
-            "Tra cứu mã đã nhập",
-            key="lookup_manual_barcode",
-            use_container_width=True,
-            disabled=not manual_barcode.strip(),
-        ):
+        manual_cols = st.columns([2, 1])
+        with manual_cols[0]:
+            lookup_clicked = st.button(
+                "Tra cứu mã đã nhập",
+                key="lookup_manual_barcode",
+                use_container_width=True,
+                disabled=not manual_barcode.strip(),
+            )
+        with manual_cols[1]:
+            st.button(
+                " Xóa",
+                key="clear_manual_barcode_btn",
+                on_click=clear_manual_barcode,
+                use_container_width=True,
+                disabled=not manual_barcode.strip(),
+            )
+        if lookup_clicked:
             digits = re.sub(r"\D", "", manual_barcode)
             if len(digits) not in (8, 12, 13, 14):
                 st.warning("Mã EAN/UPC thường có 8, 12, 13 hoặc 14 chữ số.")
@@ -784,7 +1001,7 @@ elif selected_page == "🔎 Tìm sản phẩm":
     st.markdown("## Tìm kiếm sản phẩm thực phẩm")
     st.caption("Tìm theo tên, thương hiệu hoặc mã sản phẩm trong Open Food Facts; có liên kết để mở rộng tìm kiếm trên Internet.")
     with st.form("product_search_form", clear_on_submit=False):
-        query_col, button_col = st.columns([5, 1])
+        query_col, button_col, clear_col = st.columns([5, 1.2, 1])
         with query_col:
             product_query = st.text_input(
                 "Tên sản phẩm hoặc thương hiệu",
@@ -794,6 +1011,9 @@ elif selected_page == "🔎 Tìm sản phẩm":
         with button_col:
             st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
             submitted = st.form_submit_button("Tìm kiếm", type="primary", use_container_width=True)
+        with clear_col:
+            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+            st.form_submit_button(" Xóa", on_click=clear_product_search, use_container_width=True)
     if submitted:
         st.session_state["product_search_submitted"] = product_query.strip()
         st.session_state["product_search_results"] = []
@@ -802,8 +1022,8 @@ elif selected_page == "🔎 Tìm sản phẩm":
         show_web_search_links(query + " thực phẩm thành phần")
         st.markdown('<div class="sec-title">Kết quả từ Open Food Facts</div>', unsafe_allow_html=True)
         try:
-            with nova_spinner("Đang tìm sản phẩm..."):
-                products = search_products_online(query)
+            with nova_spinner("Đang tìm sản phẩm...") as set_message:
+                products = search_products_online(query, on_retry=set_message)
             st.session_state["product_search_results"] = products
         except Exception as exc:  # noqa: BLE001
             products = []
@@ -933,9 +1153,9 @@ elif selected_page == "📚 Hiểu về NOVA":
                 <div class="nv">
                   <div class="nv-bar" style="background:{m['color']}"></div>
                   <div>
-                    <div class="nv-t">NOVA {number}: {m['title']}</div>
-                    <p class="nv-p">{m['explain']}</p>
-                    <p class="nv-e">Ví dụ: {m['examples']}</p>
+                    <div class="nv-title">NOVA {number}: {m['title']}</div>
+                    <div class="nv-text">{m['explain']}</div>
+                    <div class="nv-example">Ví dụ: {m['examples']}</div>
                   </div>
                 </div>
                 """
@@ -1022,21 +1242,20 @@ elif selected_page == "🧠 Về mô hình":
             labelFontSize=12
         )
         st.altair_chart(chart, use_container_width=True)
-        with text_col:
-            st.markdown("""
-    <div style="
-    padding:16px;
-    border-radius:16px;
-    background:rgba(6,182,212,.10);
-    border:1px solid rgba(6,182,212,.25);
-    color:#e2e8f0;
-    line-height:1.6;
-    ">
-    📊 Mô hình Linear SVC đạt Macro-F1 87,96%.
-    NOVA 2 là nhóm có F1-score thấp nhất do số lượng
-    mẫu ít hơn đáng kể so với các nhóm còn lại.
-    </div>
-    """, unsafe_allow_html=True)
+    with text_col:
+        st.markdown(
+            flat(
+                """
+                <div style="padding:16px;border-radius:16px;background:rgba(6,182,212,.10);
+                border:1px solid rgba(6,182,212,.25);color:#e2e8f0;line-height:1.6;">
+                📊 Mô hình Linear SVC đạt Macro-F1 87,96%.
+                NOVA 2 là nhóm có F1-score thấp nhất do số lượng
+                mẫu ít hơn đáng kể so với các nhóm còn lại.
+                </div>
+                """
+            ),
+            unsafe_allow_html=True,
+        )
     st.markdown("#### Cấu hình thực nghiệm")
     config = pd.DataFrame(
         {
@@ -1083,3 +1302,7 @@ elif selected_page == "🧠 Về mô hình":
 # CHÂN TRANG
 # ============================================================
 st.divider()
+st.caption(
+    "Kết quả chỉ mang tính tham khảo cho mục đích học tập, không thay thế tư vấn dinh dưỡng. "
+    "Dữ liệu sản phẩm lấy từ Open Food Facts."
+)

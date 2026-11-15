@@ -1,21 +1,26 @@
+# Xử lý dữ liệu và mô hình Machine Learning
 pandas>=2.0
 numpy>=1.24
 scikit-learn>=1.3
 joblib>=1.3
+
+# Giao diện Streamlit và biểu đồ
 streamlit>=1.30
+altair>=5.0
+
+# Xử lý hình ảnh
+Pillow>=10.4
+zxing-cpp>=2.2.0
+
+# Tra cứu dữ liệu sản phẩm
+requests>=2.31
+
+# Phân tích và trực quan hóa dữ liệu
 matplotlib>=3.7
 seaborn>=0.13
 openpyxl>=3.1
-opencv-python>=4.8.0
-pyzbar>=0.1.9
-pillow>=10.4
-zxing-cpp>=2.2.0
-requests>=2.31
-altair>=5.0
-# Tùy chọn:
-# xgboost>=2.0
-# opencv-python>=4.8
-# pyzbar>=0.1.9
 
-#zbar native library is required for pyzbar to work properly. You can install it using the following command:
-python -c "from pyzbar.pyzbar import decode; print('ZBar OK')"
+# Thư viện tùy chọn
+pyzbar>=0.1.9
+# opencv-python>=4.8.0
+# xgboost>=2.0

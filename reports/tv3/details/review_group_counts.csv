@@ -1,0 +1,12 @@
+﻿dataset,group_code,primary_review_group,sample_count
+test,context,Thiếu ngữ cảnh sản phẩm/quy trình,13
+test,cue,Cạnh tranh tín hiệu trong mô hình,7
+test,format,Chất lượng hoặc định dạng văn bản,5
+test,label_review,Nhãn cần đối chiếu độc lập,8
+test,uncertain,Chưa đủ bằng chứng nguyên nhân gốc,1
+test,vocab,"Từ vựng, đa ngôn ngữ hoặc mã viết khác",2
+vietnam,context,Thiếu ngữ cảnh sản phẩm/quy trình,1
+vietnam,cue,Cạnh tranh tín hiệu trong mô hình,7
+vietnam,label_review,Nhãn cần đối chiếu độc lập,3
+vietnam,shortcut,Dấu hiệu số có thể không bền vững,1
+vietnam,vocab,"Từ vựng, đa ngôn ngữ hoặc mã viết khác",3

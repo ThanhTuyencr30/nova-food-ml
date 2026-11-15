@@ -1,0 +1,5 @@
+﻿dataset,matching,rows_seen,total,fraction,distinct_seen_texts
+test,exact,1369,22512,0.06081201137171286,1016
+test,normalized,2208,22512,0.09808102345415778,1515
+vietnam,exact,3,171,0.017543859649122806,3
+vietnam,normalized,4,171,0.023391812865497075,4

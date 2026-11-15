@@ -74,6 +74,26 @@ def prepare_dataframe(df):
 
 
 def add_vietnam_flag(df):
+    df = df.copy()
+
+    text_columns = []
+    for col in [TEXT_COLUMN, "product_name", "countries_tags", "countries_en"]:
+        if col in df.columns:
+            text_columns.append(df[col].fillna("").astype(str))
+
+    if text_columns:
+        combined_text = text_columns[0]
+        for col_text in text_columns[1:]:
+            combined_text = combined_text + " " + col_text
+    else:
+        combined_text = pd.Series("", index=df.index)
+
+    df["co_chu_viet"] = combined_text.str.contains(
+        r"[à-ỹÀ-ỸăắằẳẵặấầẩẫậéèẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựýỳỷỹỵđĐ]",
+        regex=True,
+        na=False,
+    ).astype("int8")
+
     countries_tags = (
         df["countries_tags"]
         if "countries_tags" in df.columns
@@ -92,13 +112,32 @@ def add_vietnam_flag(df):
         + countries_en.fillna("")
     ).str.lower()
 
-    df["is_vietnam"] = countries.str.contains(
-        r"vietnam|việt nam",
-        regex=True,
-        na=False
-    ).astype("int8")
+    if "is_vietnam" in df.columns:
+        df["is_vietnam"] = pd.to_numeric(
+            df["is_vietnam"], errors="coerce"
+        ).fillna(0).astype("int8")
+    else:
+        df["is_vietnam"] = countries.str.contains(
+            r"vietnam|việt nam",
+            regex=True,
+            na=False,
+        ).astype("int8")
 
     return df
+
+
+def add_vietnamese_flag(df):
+    return add_vietnam_flag(df)
+
+
+def split_vietnam(df):
+    df = df.copy()
+    if "co_chu_viet" not in df.columns:
+        df = add_vietnamese_flag(df)
+
+    vietnam = df[df["co_chu_viet"] == 1].copy()
+    others = df[df["co_chu_viet"] == 0].copy()
+    return others, vietnam
 
 
 def main():

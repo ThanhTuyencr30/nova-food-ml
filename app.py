@@ -135,7 +135,19 @@ st.markdown(
 html, body, .stApp { background:var(--bg) !important; color:var(--ink); font-family:'Plus Jakarta Sans', system-ui, sans-serif; color-scheme:light; }
 [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [data-testid="collapsedControl"] { display:none !important; }
 [data-testid="stHeader"] { background:transparent; }
-.block-container { max-width:1120px; padding-top:1.1rem; padding-bottom:3rem; }
+/* Mở rộng chiều rộng nội dung Streamlit */
+.stMainBlockContainer,
+.block-container {
+    width: 100% !important;
+    max-width: 1440px !important;
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    box-sizing: border-box !important;
+}
 h1, h2, h3, h4 { font-family:Fraunces, Georgia, serif !important; color:var(--ink) !important; font-weight:700 !important; letter-spacing:-.01em; }
 p, li, label, [data-testid="stMarkdownContainer"] { color:var(--ink); }
 [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] * { color:var(--muted) !important; }
@@ -297,7 +309,7 @@ textarea::placeholder, input::placeholder { color:#9aa79f !important; opacity:1 
 .badge.warn { background:var(--flagbg); color:var(--flagtx); }
 .nv-num { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; border-radius:14px; color:#fff; font-family:Fraunces, Georgia, serif; font-size:1.6rem; font-weight:800; }
 .foot { margin-top:30px; padding:16px 0 4px; border-top:1px solid var(--line); color:var(--muted); font-size:.8rem; line-height:1.6; }
-@media (max-width:820px) { .stats { grid-template-columns:repeat(2, 1fr); } }
+@media (max-width:820px) { .stats { grid-template-columns:repeat(2, 1fr); } }))
 </style>
 """,
     unsafe_allow_html=True,
@@ -1054,8 +1066,13 @@ let lastVal = "", streak = 0, lastNonce = null, started = false;
 function post(type, data) {
   window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type }, data || {}), "*");
 }
-function fit() { post("streamlit:setFrameHeight", { height: document.documentElement.scrollHeight + 6 }); }
-function status(text, state) {
+function fit() {
+  const height = document.documentElement.scrollHeight;
+
+  post("streamlit:setFrameHeight", {
+    height: height
+  });
+}function status(text, state) {
   $("statusText").textContent = text;
   $("dot").className = "dot" + (state ? " " + state : "");
   fit();
@@ -1341,11 +1358,27 @@ if selected_page == SCAN_PAGE:
         mode = st.radio("Chế độ quét", modes, key="scan_mode", horizontal=True, label_visibility="collapsed")
         # ---- Chế độ 1: camera trực tiếp, tự chụp khi thấy mã ----
         if mode == modes[0]:
-            payload = live_scanner(nonce=nonce, autostart=True, key=f"live_scanner_{nonce}", default=None)
-            if payload and str(payload.get("ts")) != st.session_state.get("last_live_scan"):
-                st.session_state["last_live_scan"] = str(payload.get("ts"))
-                handle_live_payload(payload)
-            st.caption("Cần HTTPS hoặc localhost để trình duyệt cho phép camera. Nếu bị chặn, hãy chuyển sang “Chụp ảnh” hoặc “Tải ảnh”.")
+            st.markdown("### 📷 Quét mã bằng camera trực tiếp")
+            st.caption(
+                "Camera sẽ tự nhận diện và chụp khi phát hiện mã QR hoặc mã vạch."
+            )
+
+            live_payload = live_scanner(
+                key=f"live_scanner_{nonce}",
+                nonce=nonce,
+                autostart=False,
+                default=None,
+            )
+
+            if isinstance(live_payload, dict) and live_payload.get("image"):
+                fingerprint = hashlib.sha256(
+                    live_payload["image"].encode()
+                ).hexdigest()
+
+                if st.session_state.get("last_live_scan") != fingerprint:
+                    st.session_state["last_live_scan"] = fingerprint
+
+                    handle_live_payload(live_payload)
         # ---- Chế độ 2: chụp bằng camera của trình duyệt (tự giải mã sau khi chụp) ----
         elif mode == modes[1]:
             camera_image = st.camera_input("Chụp mã bằng camera", key=f"barcode_camera_{nonce}")
@@ -1360,7 +1393,6 @@ if selected_page == SCAN_PAGE:
                             st.error("Chưa đọc được mã. Hãy chụp lại gần hơn, đủ sáng, giữ mã thẳng và tránh lóa.")
                         else:
                             st.success("Đã nhận diện: " + ", ".join(codes))
-                            process_scanned_text(codes[0], "Chụp ảnh")
                     except Exception as exc:  # noqa: BLE001
                         st.error(f"Không xử lý được ảnh camera: {exc}")
                 st.button("↺ Chụp lại", key="clear_camera_image", on_click=clear_scan_inputs, use_container_width=True)

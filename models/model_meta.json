@@ -1,0 +1,13 @@
+{
+  "model": "linear_svc",
+  "features": "text_only",
+  "numeric_columns": [],
+  "tuned_params": {},
+  "test": {
+    "macro_f1": 0.8795535602779763,
+    "accuracy": 0.9575852567181535
+  },
+  "vietnam": null,
+  "random_state": 42,
+  "test_size": 0.2
+}
